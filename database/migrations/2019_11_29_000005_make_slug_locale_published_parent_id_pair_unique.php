@@ -15,12 +15,29 @@ class MakeSlugLocalePublishedParentidPairUnique extends Migration
     public function up()
     {
         $pagesTableName = NovaPageManager::getPagesTableName();
-        $key = DB::select(
-            DB::raw('SHOW KEYS
-            FROM nova_page_manager_pages
-            WHERE Key_name LIKE "nova_page_manager_pages%"
-            AND Key_name LIKE "%locale_slug_published_unique"')
-        );
+
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            $key = DB::select(
+                DB::raw(
+                    "SELECT tablename, indexname, indexdef
+                    FROM pg_indexes
+                    WHERE schemaname = 'public'
+                        AND tablename = 'nova_page_manager_pages'
+                        AND indexname LIKE 'nova_page_manager_pages%'
+                        AND indexname LIKE '%locale_slug_published_unique'"
+                )
+            );
+        } else {
+            $key = DB::select(
+                DB::raw(
+                    'SHOW KEYS
+                    FROM nova_page_manager_pages
+                    WHERE Key_name LIKE "nova_page_manager_pages%"
+                    AND Key_name LIKE "%locale_slug_published_unique"'
+                )
+            );
+        }
+
         $indexValue = empty($key) ? 'nova_page_manager' : 'nova_page_manager_pages';
 
         Schema::table($pagesTableName, function ($table) use ($indexValue) {
