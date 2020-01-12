@@ -3,8 +3,10 @@
 namespace OptimistDigital\NovaPageManager;
 
 use Illuminate\Http\Request;
+use OptimistDigital\NovaPageManager\Models\Page;
+use Illuminate\Database\Eloquent\Model;
 
-abstract class Template
+class Template
 {
     public static $type = 'page';
     public static $name = '';
@@ -13,10 +15,37 @@ abstract class Template
 
     protected $resource = null;
 
+    public $model = null;
+
     public function __construct($resource = null)
     {
         $this->resource = $resource;
     }
 
-    abstract function fields(Request $request): array;
+    function fields(Request $request): array
+    {
+        return [];
+    }
+
+    public static function fromModel(Model $model)
+    {
+        $instance = new static;
+
+        $instance->model = $model;
+
+        return $instance;
+    }
+
+    public function __get($name)
+    {
+        if (!isset($this->model)) {
+            return null;
+        }
+
+        if (isset($this->model->data)) {
+            return data_get($this->model->data, $name, null);
+        }
+
+        return data_get($this->model, $name, null);
+    }
 }

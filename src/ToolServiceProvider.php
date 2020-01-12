@@ -3,6 +3,7 @@
 namespace OptimistDigital\NovaPageManager;
 
 use Laravel\Nova\Nova;
+use Illuminate\Routing\Route as IlluminateRoute;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use OptimistDigital\NovaPageManager\Http\Middleware\Authorize;
@@ -10,9 +11,48 @@ use OptimistDigital\NovaPageManager\Nova\Page;
 use OptimistDigital\NovaPageManager\Nova\Region;
 use OptimistDigital\NovaPageManager\Commands\CreateTemplate;
 use Illuminate\Support\Facades\Validator;
+use OptimistDigital\NovaPageManager\Models\Page as PageModel;
+use Illuminate\Support\Facades\Blade;
 
 class ToolServiceProvider extends ServiceProvider
 {
+    public function register()
+    {
+        $this->app->singleton(PageModel::class, function ($app) {
+            return PageModel::current();
+        });
+
+        $this->app->singleton(Template::class, function ($app) {
+            $page = PageModel::current();
+
+            if (!$page) {
+                return null;
+            }
+
+            foreach (config('nova-page-manager.templates') as $template) {
+                if ($template::$name === $page->template) {
+                    return $template::fromModel($page);
+                }
+            }
+
+            return null;
+        });
+
+        foreach (config('nova-page-manager.templates') as $template) {
+            if ($template::$type !== 'page') {
+                continue;
+            }
+
+            $this->app->singleton($template, function ($app) use ($template) {
+                $page = PageModel::where('template', $template::$name)
+                    ->where('locale', app()->getLocale())
+                    ->firstOrFail();
+
+                return $template::fromModel($page);
+            });
+        }
+    }
+
     /**
      * Bootstrap any application services.
      *
@@ -60,6 +100,22 @@ class ToolServiceProvider extends ServiceProvider
             if ($value === '/') return true;
             return preg_match('/^[\pL\pM\pN_-]+$/u', $value) > 0;
         }, 'Field must be alphanumeric with dashes or underscores or a single slash.');
+
+        // Register template macro for routes.
+        IlluminateRoute::macro('template', function ($template = null) {
+            if (is_null($template)) {
+                return $this->action['nova-pagemanager-template'] ?? null;
+            }
+
+            $this->action['nova-pagemanager-template'] = $template;
+
+            return $this;
+        });
+
+        // Register blade directives.
+        Blade::directive('page', function ($key) {
+            return '<?= Page::get(\'' . trim($key, "'\"") . '\'); ?>';
+        });
     }
 
     /**

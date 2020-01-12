@@ -38,12 +38,16 @@
     "laravel": {
       "providers": [
         "OptimistDigital\\NovaPageManager\\ToolServiceProvider"
-      ]
+      ],
+      "aliases": {
+        "Page": "OptimistDigital\\NovaPageManager\\NovaPageManagerFacade"
+      }
     }
   },
   "config": {
     "sort-packages": true
   },
   "minimum-stability": "dev",
-  "prefer-stable": true
+  "prefer-stable": true,
+  "require-dev": {}
 }

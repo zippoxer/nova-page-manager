@@ -4,6 +4,7 @@ namespace OptimistDigital\NovaPageManager\Models;
 
 use OptimistDigital\NovaPageManager\NovaPageManager;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Route;
 
 class Page extends TemplateModel
 {
@@ -99,9 +100,22 @@ class Page extends TemplateModel
 
     protected function normalizePath($path)
     {
-        if(!is_string($path) || $path === '') $path = '/';
+        if (!is_string($path) || $path === '') $path = '/';
         if ($path[0] !== '/') $path = "/$path";
         if (strlen($path) > 1 && substr($path, -1) === '/') $path = substr($path, 0, -1);
         return preg_replace('/[\/]+/', '/', $path);
+    }
+
+    public static function current(): ?Page
+    {
+        $template = Route::getCurrentRoute()->template();
+
+        if (!$template) {
+            return null;
+        }
+
+        return static::where('template', $template::$name)
+            ->where('locale', app()->getLocale())
+            ->first();
     }
 }

@@ -6,9 +6,12 @@ use Laravel\Nova\Resource;
 use Illuminate\Http\Request;
 use OptimistDigital\NovaPageManager\NovaPageManager;
 use OptimistDigital\NovaLocaleField\Filters\LocaleFilter;
+use Illuminate\Support\Str;
 
 abstract class TemplateResource extends Resource
 {
+    use \Eminiarts\Tabs\TabsOnEdit;
+
     protected $templateClass;
 
     protected function getTemplateClass()
@@ -21,7 +24,11 @@ abstract class TemplateResource extends Resource
 
         if (isset($this->template)) {
             foreach ($templates as $template) {
-                if ($template::$name == $this->template) $this->templateClass = new $template($this->resource);
+                if ($template::$name == $this->template) {
+                    $this->templateClass = new $template($this->resource);
+                    $this->templateClass->page = $this;
+                    break;
+                }
             }
         }
 
@@ -45,8 +52,15 @@ abstract class TemplateResource extends Resource
                 if (empty($field->panel)) {
                     $field->attribute = 'data->' . $field->attribute;
                 } else {
-                    $sanitizedPanel = nova_page_manager_sanitize_panel_name($field->panel);
-                    $field->attribute = 'data->' . $sanitizedPanel . '->' . $field->attribute;
+                    if ($field->panel === 'flat') {
+                        $field->attribute = $field->attribute;
+                    } else if ($field->panel === 'tabs' && isset($field->meta['tab'])) {
+                        $field->attribute = Str::snake($field->meta['tab']) . '->' . $field->attribute;
+                    } else {
+                        $field->attribute = nova_page_manager_sanitize_panel_name($field->panel) . '->' . $field->attribute;
+                    }
+
+                    $field->attribute = 'data->' . $field->attribute;
                 }
             } else {
                 if ($field instanceof \Laravel\Nova\Fields\Heading) {
